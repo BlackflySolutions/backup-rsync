@@ -1,0 +1,2 @@
+FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+RUN apt-get update && apt-get install -y --no-install-recommends rsync && rm -rf /var/lib/apt/lists/* && apt-get purge -y
