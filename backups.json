@@ -1,0 +1,14 @@
+{
+  "local": {
+    "destination": "/backup-destination",
+    "process": "/usr/bin/rsync -d --exclude '/tmp'"
+  },
+  "remote": {
+    "destination": "$REMOTESERVER:/var/backup/docker/docker-volumes/$VOLUME",
+    "process": "/usr/bin/rsync -v --exclude '/tmp' -d"
+  },
+  "gcloud": {
+    "destination": "gs://$GCLOUD_BUCKET/docker-volume/$VOLUME",
+    "process": "/usr/bin/gsutil -m -q rsync -x '/tmp' -d -r"
+  }
+}
