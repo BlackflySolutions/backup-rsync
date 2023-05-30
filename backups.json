@@ -1,14 +1,29 @@
 {
   "local": {
     "destination": "/backup-destination",
-    "process": "/usr/bin/rsync -d --exclude '/tmp'"
+    "process": "/usr/bin/rsync -d --exclude '/tmp'",
+    "options": {
+      "vdrupal": "--include=web/sites/default/files/civicrm/ext/ --exclude=web/sites/default/files/* --exclude=private/ --delete-excluded",
+      "vsite": "--include=files/civicrm/ext/ --exclude=files/* --delete-excluded",
+      "vwp": "--exclude=wp-content/cache/ --delete-excluded"
+    }
   },
   "remote": {
     "destination": "$REMOTESERVER:/var/backup/docker/docker-volumes/$VOLUME",
     "process": "/usr/bin/rsync -v --exclude '/tmp' -d"
+    "options": {
+      "vdrupal": "--include=web/sites/default/files/civicrm/ext/ --exclude=web/sites/default/files/* --exclude=private/ --delete-excluded",
+      "vsite": "--include=files/civicrm/ext/ --exclude=files/* --delete-excluded",
+      "vwp": "--exclude=wp-content/cache/ --delete-excluded"
+    }
   },
   "gcloud": {
     "destination": "gs://$GCLOUD_BUCKET/docker-volume/$VOLUME",
     "process": "/usr/bin/gsutil -m -q rsync -x '/tmp' -d -r"
+    "options": {
+      "vdrupal": "--include=web/sites/default/files/civicrm/ext/ --exclude=web/sites/default/files/* --exclude=private/ --delete-excluded",
+      "vsite": "--include=files/civicrm/ext/ --exclude=files/* --delete-excluded",
+      "vwp": "--exclude=wp-content/cache/ --delete-excluded"
+    }
   }
 }
