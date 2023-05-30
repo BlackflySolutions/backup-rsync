@@ -3,9 +3,13 @@
 # Parameters
 COMMAND="$1"
 OPTION_TYPE="$2"
+KEY_FILE="$3"
 OPTIONS_KEY=".[env.backup].options.${OPTION_TYPE}"
 #echo $COMMAND
 #echo $OPTION_TYPE
+if [ ! -z "$KEY_FILE"]; then
+  gcloud auth login --cred-file=$KEY_FILE 
+fi
 #echo $OPTIONS_KEY
 #cat /etc/backups.json
 if [ "$COMMAND" = "backups-job" ]; then
