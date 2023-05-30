@@ -1,7 +1,7 @@
 FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine
 RUN apk add --no-cache rsync jq gettext openssh-client ca-certificates bash
-ADD ../run.sh /opt
-ADD ../boto.config /root/.boto
+ADD run.sh /opt
+ADD boto.config /root/.boto
 RUN chmod +x /opt/run.sh
 ENTRYPOINT [ "sh", "/opt/run.sh" ]
 # default cmd runs jobs in backups.json
