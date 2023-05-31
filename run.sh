@@ -24,6 +24,12 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
     export backup
     source="/backup-source/"
     destination="$(jq -r '.[env.backup].destination' /etc/backups.json | envsubst)"
+    # see if I need to run something to initialize the destination directory
+    if initialize="$(jq -re '.[env.backup].initialize' /etc/backups.json | envsubst)"; then
+      if [ "$initialize" = "null" ]; then
+        initialize=""
+      fi
+    fi
     # include subdir for this OPTION TYPE as addition to source and destination directory if defined in the json file
     if subdir="$(jq -er $SUBDIRECTORIES_KEY /etc/backups.json | envsubst)"; then
       if [ "null" != "$subdir" ]; then
@@ -49,6 +55,8 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
           # hackish way to skip one of the option types
           if [ "$options" = "ignore" ]; then
             RUN=""
+          elif [ "$options" = "null" ]; then
+            RUN="$process $extra_args $source $destination"
           else
             RUN="$process $extra_args $options $source $destination"
           fi
@@ -57,6 +65,9 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
         fi
       fi
       echo $RUN
+      if [ ! -z "$initialize" ]; then
+        $initialize $destination
+      fi
       $RUN
     fi
   done
