@@ -9,7 +9,9 @@ SUBDIRECTORIES_KEY=".[env.backup].subdirectories.${OPTION_TYPE}"
 #echo $COMMAND
 #echo $OPTION_TYPE
 if [ ! -z "${KEY_FILE}" ]; then
+  #echo "Initializing gcloud"
   gcloud --no-user-output-enabled auth login --cred-file=$KEY_FILE
+  #echo "Finished initializing gcloud"
 fi
 #echo $OPTIONS_KEY
 #cat /etc/backups.json
@@ -22,55 +24,76 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
   eval "set -- $backups"
   for backup; do
     export backup
+    #echo "Running $backup"
     source="/backup-source/"
-    destination="$(jq -r '.[env.backup].destination' /etc/backups.json | envsubst)"
+    export destination="$(jq -r '.[env.backup].destination' /etc/backups.json | envsubst)"
+    #echo "Destination is $destination, now check for subdirs"
     # include subdir for this OPTION TYPE as addition to source and destination directory if defined in the json file
-    if subdir="$(jq -er $SUBDIRECTORIES_KEY /etc/backups.json | envsubst)"; then
+    if subdir="$(jq -re $SUBDIRECTORIES_KEY /etc/backups.json | envsubst)"; then
       if [ "null" != "$subdir" ]; then
+        #echo "Found a non-null subdirectory"
         source="${source}${subdir}/"
-        destination="${destination}/${subdir}"
+        export destination="${destination}/${subdir}"
       fi
     fi
+    #echo "Final destination is now $destination"
     # see if I need to run something to initialize the remote destination/subdir directory (may use subdir as an env variable!)
     if initialize="$(jq -re '.[env.backup].initialize' /etc/backups.json | envsubst)"; then
       if [ "$initialize" = "null" ]; then
         initialize=""
       fi
     fi
+    #echo "Initialize is $initialize"
     # if source isn't a directory, we'll skip this backup!
+    #echo "Source is $source"
     if [ -d "$source" ]; then
-      # if I'm reporting, I'll just do it now, ignoring options and extra args, etc.
-      if [ "$COMMAND" = "backups-report" ]; then
-        report="$(jq -r '.[env.backup].report' /etc/backups.json | envsubst)"
-        RUN="$report $destination"
-      else
-        process="$(jq -r '.[env.backup].process' /etc/backups.json | envsubst)"
-        if [ "$COMMAND" = "backups-status" ]; then
-          extra_args=" -n --stats"
-        else
-          extra_args=""
+      # include options for this OPTION TYPE in the process if defined in the json file
+      #echo "Getting options"
+      if options="$(jq -re $OPTIONS_KEY /etc/backups.json)"; then
+        if [ "$options" = "null" ]; then
+          options=""
         fi
-        # include options for this OPTION TYPE in the process if defined in the json file
-        if options="$(jq -er $OPTIONS_KEY /etc/backups.json | envsubst)"; then
-          # hackish way to skip one of the option types
-          if [ "$options" = "ignore" ]; then
-            RUN=""
-          elif [ "$options" = "null" ]; then
-            RUN="$process $extra_args $source $destination"
-          else
-            RUN="$process $extra_args $options $source $destination"
+        #echo "found options!"
+      fi
+      #echo "Options is $options"
+      # special hackish setting of options = ignore means skip it
+      if [ "ignore" != "$options" ]; then
+        # test for simpler RUN for backups-report, skipped if configuration is not defined
+        if [ "$COMMAND" = "backups-report" ]; then
+          RUN=""
+          if report="$(jq -re '.[env.backup].report' /etc/backups.json | envsubst)"; then
+            if [ "$report" != "null" ]; then
+              RUN="$report"
+            fi
           fi
+        #echo "running reporting"
+        #echo $RUN
         else
-          RUN="$process $extra_args $source $destination"
+          # assume I'm doing a backups job or status, use the (required) process configuration
+          process="$(jq -r '.[env.backup].process' /etc/backups.json | envsubst)"
+          if [ "$COMMAND" = "backups-status" ]; then
+            extra_args=" -n --stats"
+          else
+            extra_args=""
+          fi
+          # generate the RUN string
+          RUN="$process $extra_args $options $source $destination"
+        fi
+        #echo "testing if I have a RUN"
+        if [ ! -z "$RUN" ]; then
+          if [ ! -z "$initialize" ]; then
+            echo "$initialize"
+            $initialize
+          fi
+          echo "$RUN"
+          $RUN
         fi
       fi
-      echo $RUN
-      if [ ! -z "$initialize" ]; then
-        $initialize
-      fi
-      $RUN
+    #else
+    #echo "Source does not exist, skipping"
     fi
   done
 else
+  #echo "Running explicit cmd"
   exec "$@"
 fi
