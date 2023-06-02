@@ -95,5 +95,5 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
   done
 else
   #echo "Running explicit cmd"
-  exec "$@"
+  exec "$1"
 fi
