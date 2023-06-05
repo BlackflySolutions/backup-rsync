@@ -27,7 +27,13 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
     #echo "Running $backup"
     source="/backup-source/"
     export destination="$(jq -r '.[env.backup].destination' /etc/backups.json | envsubst)"
-    #echo "Destination is $destination, now check for subdirs"
+    if prefix="$(jq -re '.[env.backup].prefix' /etc/backups.json | envsubst)"; then
+      if [ "null" == "$prefix" ]; then
+        prefix=""
+      fi
+    fi
+    export prefix
+    #echo "Destination is $prefix$destination, now check for subdirs"
     # include subdir for this OPTION TYPE as addition to source and destination directory if defined in the json file
     if subdir="$(jq -re $SUBDIRECTORIES_KEY /etc/backups.json | envsubst)"; then
       if [ "null" != "$subdir" ]; then
@@ -77,7 +83,7 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
             extra_args=""
           fi
           # generate the RUN string
-          RUN="$process $extra_args $options $source $destination"
+          RUN="$process $extra_args $options $source $prefix$destination"
         fi
         #echo "testing if I have a RUN"
         if [ ! -z "$RUN" ]; then
