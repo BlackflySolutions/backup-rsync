@@ -6,6 +6,7 @@ OPTION_TYPE="$2"
 KEY_FILE="$3"
 OPTIONS_KEY=".[env.backup].options.${OPTION_TYPE}"
 SUBDIRECTORIES_KEY=".[env.backup].subdirectories.${OPTION_TYPE}"
+CLEANUP_KEY=".[env.backup].cleanup.${OPTION_TYPE}"
 #echo $COMMAND
 #echo $OPTION_TYPE
 if [ ! -z "${KEY_FILE}" ]; then
@@ -15,7 +16,7 @@ if [ ! -z "${KEY_FILE}" ]; then
 fi
 #echo $OPTIONS_KEY
 #cat /etc/backups.json
-if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$COMMAND" = "backups-report" ]; then
+if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$COMMAND" = "backups-report" ] || [ "$COMMAND" = "backups-cleanup" ]; then
   # backup according to /etc/backups.json
   # the backups variable gets set as the top level keys of the json file, i.e. machine names of the backups to run
   # each key has to define a destination and process
@@ -33,7 +34,7 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
       fi
     fi
     export prefix
-    #echo "Destination is $prefix$destination, now check for subdirs"
+    # echo "Destination is $prefix$destination, now check for subdirs"
     # include subdir for this OPTION TYPE as addition to source and destination directory if defined in the json file
     if subdir="$(jq -re $SUBDIRECTORIES_KEY /etc/backups.json | envsubst)"; then
       if [ "null" != "$subdir" ]; then
@@ -64,7 +65,7 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
       #echo "Options is $options"
       # special hackish setting of options = ignore means skip it
       if [ "ignore" != "$options" ]; then
-        # test for simpler RUN for backups-report, skipped if configuration is not defined
+        # test for simpler RUN for backups-report, or backups-cleanup, skipped if configuration is not defined
         if [ "$COMMAND" = "backups-report" ]; then
           RUN=""
           if report="$(jq -re '.[env.backup].report' /etc/backups.json | envsubst)"; then
@@ -74,6 +75,13 @@ if [ "$COMMAND" = "backups-job" ] || [ "$COMMAND" = "backups-status" ] || [ "$CO
           fi
         #echo "running reporting"
         #echo $RUN
+        elif [ "$COMMAND" = "backups-cleanup" ]; then
+          RUN=""
+          if cleanup="$(jq -re $CLEANUP_KEY /etc/backups.json | envsubst)"; then
+            if [ "null" != "$cleanup" ]; then
+              RUN="$cleanup"
+            fi
+          fi
         else
           # assume I'm doing a backups job or status, use the (required) process configuration
           process="$(jq -r '.[env.backup].process' /etc/backups.json | envsubst)"
